@@ -37,6 +37,10 @@ navigator.usb.addEventListener('disconnect', event => {
 let button = document.getElementById('request-device');
 let contiUpdateEmvBtn = document.getElementById('continue-updateEmv');
 
+var transactionCard = document.getElementById("transaction-card");
+var infoCard = document.getElementById("info-card");
+var updatecard = document.getElementById("update-card");
+
 var trasactionData = document.getElementById("result_div");
 var infoData = document.getElementById("div_infoResult");
 var updateResult = document.getElementById("div_updateResult");
@@ -246,11 +250,22 @@ QPOSServiceListenerImpl.prototype.onReturnGetEMVListResult = function (aidString
             aidList.appendChild(newLi);  
         }
 
-        aidList.addEventListener('click', function(e) { 
-            if (e.target.tagName === 'LI') {  
-                console.log("click:"+e.target.getAttribute('data-aid'));
+        const listItems = document.querySelectorAll('#aid-list li'); 
 
-                var aidstr = toUpperCaseStr(e.target.getAttribute('data-aid'));
+        listItems.forEach(item => {  
+            item.addEventListener('click', () => {  
+                // 移除所有项的选中类  
+                listItems.forEach(i => i.classList.remove('selected'));  
+
+                // 添加选中类到当前点击的项  
+                item.classList.add('selected');  
+
+                // console.log("click:"+e.target.getAttribute('data-aid'));
+                console.log("click:"+item.getAttribute('data-aid'));
+
+                // var aidstr = toUpperCaseStr(e.target.getAttribute('data-aid'));
+                var aidstr = toUpperCaseStr(item.getAttribute('data-aid'));
+
                 aidstr = (aidstr.length/2).toString(16) + aidstr;
                 if (aidstr.length % 2 != 0) {
                     aidstr = "9F06" + "0" + aidstr;
@@ -261,8 +276,32 @@ QPOSServiceListenerImpl.prototype.onReturnGetEMVListResult = function (aidString
 
                 console.log("getemv:"+aidstr)
                 mService.updateEmvAPP(EMVDataOperation.GETEMV,aidstr);
-            } 
-        });
+
+            });  
+        }); 
+
+        // aidList.addEventListener('click', function(e) { 
+        //     if (e.target.tagName === 'LI') {  
+        //         console.log("click:"+e.target.getAttribute('data-aid'));
+
+        //         aidList.forEach(i => i.classList.remove('selected'));  
+  
+        //         // 添加选中类到当前点击的项  
+        //         e.classList.add('selected');  
+
+        //         var aidstr = toUpperCaseStr(e.target.getAttribute('data-aid'));
+        //         aidstr = (aidstr.length/2).toString(16) + aidstr;
+        //         if (aidstr.length % 2 != 0) {
+        //             aidstr = "9F06" + "0" + aidstr;
+        //         } else {
+        //             aidstr = "9F06" + aidstr;
+        //         }
+        //         selectedAIDstr = aidstr;
+
+        //         console.log("getemv:"+aidstr)
+        //         mService.updateEmvAPP(EMVDataOperation.GETEMV,aidstr);
+        //     } 
+        // });
 
                 // 获取第一个AID的详细配置
 
@@ -416,7 +455,18 @@ QPOSServiceListenerImpl.prototype.onUpdatePosFirmwareResult = function(result,st
     modal.style.display = "none"; // 加载完成后隐藏模态框  
     emvContainerDiv.style.display="none";
 
-    updateResult.innerText = "onUpdatePosFirmwareResult:"+result+"\n"+str;
+    var updateFWResult = "onUpdatePosFirmwareResult:"+result+'<br>';
+
+
+    if(result) {
+        updateFWResult = updateFWResult + str;
+    } else {
+        updateFWResult = updateFWResult +'<span style="color: red;">'+str;
+    }
+
+
+
+    updateResult.innerHTML = updateFWResult;
 }
 
 QPOSServiceListenerImpl.prototype.onRturnSwitchWinusbResult = function (isSuccess) {
@@ -434,7 +484,7 @@ QPOSServiceListenerImpl.prototype.onReturnShowEMVOfXml = function(list){
     for(x in list){
         // console.log(list[x]);
         if(list[x].type == "APP")
-            updateResult.innerHTML =updateResult.innerHTML+"type:"+list[x].type+" Aid:"+list[x].id+" index:"+list[x].index+"</br>";
+            updateResult.innerHTML =updateResult.innerHTML+"type:"+list[x].type+" Aid:"+list[x].id+"</br>";
         else
             updateResult.innerHTML =updateResult.innerHTML+"type:"+list[x].type+" Rid:"+list[x].id+" index:"+list[x].index+"</br>";
     }
@@ -575,8 +625,8 @@ function dialog(){
       if(Connected){
           //mService.resetPosStatus();
           // mService.doSetBuzzerOperation(3);
-        updateResult.innerText = "updating Firmware...";
-
+        contiUpdateEmvBtn.style.display = "none";
+        updateResult.innerHTML = "";
         document.getElementById("updateFwFile").click();
       } else{
           DiscoverDevice();
@@ -627,15 +677,33 @@ function startTrade(){
 }
 
 function getQPosInfo(){
-    mService.getQPosInfo();
+    if(Connected){
+        mService.getQPosInfo();
+    }else{
+        DiscoverDevice();
+        UpdateUI();
+    }
 }
 
 function getQPosId(){
-    mService.getQPosId();
+    if(Connected){
+        mService.getQPosId();
+    }else{
+        DiscoverDevice();
+        UpdateUI();
+    }
 }
 
 function getEmvConfig(){
-    mService.updateEmvAPP(EMVDataOperation.ATTAINLIST,null);
+    contiUpdateEmvBtn.style.display = "none";
+    updateResult.innerHTML = "";
+    aidList.innerHTML = ''; 
+    if(Connected){
+        mService.updateEmvAPP(EMVDataOperation.ATTAINLIST,null);
+    }else{
+        DiscoverDevice();
+        UpdateUI();
+    }
     // mService.updateEmvAPP(EMVDataOperation.GETEMV,"9F0607A0000000031010");
 }
 
@@ -905,7 +973,49 @@ function powerOffNFC(){
     }
 }
 //InitUI();
+
+function showAndHideCardContent(cardName){
+
+    // const listItems = document.querySelectorAll('#sidebar-list li');  
+    // listItems.forEach(li => {li.classList.remove('nav-link active');li.classList.add('nav-link')}); 
+
+    // document.querySelector(cardName).classList.add('nav-link active');
+
+    transactionCard.style.display = "none";
+    infoCard.style.display = "none";
+    updatecard.style.display = "none";
+
+    // item.querySelector('a').class="nav-link active";
+    if(cardName == "transaction-card-side") {
+        transactionCard.style.display="";
+    } else if(cardName == "info-card-side") {
+        infoCard.style.display = "";
+    } else if(cardName == "update-card-side") {
+        updatecard.style.display = "";
+    }
+}
+
+document.getElementById("transaction-card-side").addEventListener('click', async () =>{
+    console.log("tra");
+    showAndHideCardContent("transaction-card-side");
+}); 
+
+document.getElementById("info-card-side").addEventListener('click', async () =>{
+    console.log("info");
+
+    showAndHideCardContent("info-card-side");
+}); 
+
+document.getElementById("update-card-side").addEventListener('click', async () =>{
+    console.log("update");
+
+    showAndHideCardContent("update-card-side");
+}); 
+
+
+
 UpdateUI();
+showAndHideCardContent("transaction-card-side");
 
 
 const aidList = document.getElementById('aid-list');  
